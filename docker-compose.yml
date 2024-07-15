@@ -37,12 +37,12 @@ services:
     volumes:
       - jenkins_home:/var/jenkins_home
 
-  # ngrok:
-  #   image: wernight/ngrok
-  #   env_file:
-  #     - .env
-  #   command: >
-  #     http -region=$NGROK_REGION -auth=$NGROK_AUTH -subdomain=$NGROK_SUBDOMAIN jenkins:8080
+  ngrok:
+    image: wernight/ngrok
+    env_file:
+      - .env
+    command: >
+      http -region=$NGROK_REGION -auth=$NGROK_AUTH -subdomain=$NGROK_SUBDOMAIN jenkins:8080
 
 
 volumes:
