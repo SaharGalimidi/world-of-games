@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Memory Game</h2>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% else %}
+        <p>Remember this sequence of numbers:</p>
+        <p>{{ sequence }}</p>
+        <script>
+            setTimeout(() => {
+                document.querySelector('p:nth-of-type(2)').style.visibility = 'hidden';
+            }, 700);
+        </script>
+        <form method="post">
+            <label for="sequence">Enter the sequence:</label>
+            <input type="text" name="sequence" id="sequence" required>
+            <button type="submit">Submit</button>
+        </form>
+    {% endif %}
+    <a href="{{ url_for('game_selection') }}">Back to Game Selection</a>
+{% endblock %}

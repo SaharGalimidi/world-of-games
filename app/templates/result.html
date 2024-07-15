@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Game Result</h2>
+    {% if result %}
+        <p>Congratulations! You won the game!</p>
+    {% else %}
+        <p>Sorry, you lost the game.</p>
+    {% endif %}
+    <p>Your current score is: {{ score }}</p>
+    <a href="{{ url_for('game_selection', difficulty=difficulty) }}">Play Again</a>
+    <a href="{{ url_for('game_selection') }}">Back to Game Selection</a>
+{% endblock %}

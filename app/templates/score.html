@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Your Score</h2>
+    <p>The score is <div id="score">{{ score }}</div></p>
+    <a href="{{ url_for('game_selection') }}">Back to Game Selection</a>
+{% endblock %}

@@ -1,0 +1,583 @@
+app/__init__.py:
+import os
+import logging
+from flask import Flask
+
+
+def create_app() -> Flask:
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
+    app.logger.setLevel(logging.DEBUG)    
+
+    with app.app_context():
+        from . import routes
+        
+    return app
+
+
+
+
+app/games/__init__.py:
+
+
+
+
+app/games/currency_roulette_game.py:
+import random
+import requests
+from typing import Tuple
+import logging
+
+logger = logging.getLogger(__name__)
+
+def get_money_interval(difficulty: int) -> Tuple[float, float]:
+    response = requests.get("https://api.exchangerate-api.com/v4/latest/USD")
+    rate = response.json()["rates"]["ILS"]
+    #t = random.randint(1, 100)
+    lower = (5 - difficulty)
+    upper = (5 + difficulty)
+    interval = (lower * rate, upper * rate)
+    logger.debug(f'Generated interval for difficulty {difficulty}: {interval}')
+    return interval
+
+
+
+
+app/games/guess_game.py:
+import random
+import logging
+
+logger = logging.getLogger(__name__)
+
+def generate_number(difficulty: int) -> int:
+    number = random.randint(1, difficulty)
+    logger.debug(f'Generated number: {number}')
+    return number
+
+def compare_results(secret_number: int, guess: int) -> bool:
+    result = secret_number == guess
+    logger.debug(f'Comparing secret number {secret_number} and guess {guess}: {result}')
+    return result
+
+
+
+
+app/games/memory_game.py:
+import random
+from typing import List
+import logging
+
+logger = logging.getLogger(__name__)
+
+def generate_sequence(difficulty: int) -> List[int]:
+    sequence = [random.randint(1, 101) for _ in range(difficulty)]
+    logger.debug(f'Generated sequence: {sequence}')
+    return sequence
+
+def is_list_equal(list1: List[int], list2: List[int]) -> bool:
+    equal = list1 == list2
+    logger.debug(f'Comparing lists {list1} and {list2}: {equal}')
+    return equal
+
+
+
+
+app/routes.py:
+from flask import render_template, request, redirect, url_for, session, current_app as app
+from app.games import guess_game, memory_game, currency_roulette_game
+from app.score import add_score, get_score
+import json
+
+@app.route('/')
+def index() -> str:
+    app.logger.debug('Rendering index page')
+    return render_template('index.html')
+
+@app.route('/welcome', methods=['GET', 'POST'])
+def welcome_route() -> str:
+    if request.method == 'POST':
+        name = request.form['name']
+        session['username'] = name
+        message = f"Hello {name} and welcome to the World of Games (WoG). Here you can find many cool games to play."
+        app.logger.debug(f'User {name} logged in')
+        return render_template('welcome.html', message=message)
+    app.logger.debug('Rendering welcome page')
+    return render_template('index.html')
+
+@app.route('/game_selection', methods=['GET', 'POST'])
+def game_selection() -> str:
+    difficulty = request.args.get('difficulty', 1, type=int)
+    if request.method == 'POST':
+        try:
+            game_choice = int(request.form['game_choice'])
+            difficulty = int(request.form['difficulty'])
+            app.logger.debug(f'Game choice: {game_choice}, Difficulty: {difficulty}')
+            if game_choice not in [1, 2, 3]:
+                raise ValueError("Invalid game choice or difficulty")
+            if game_choice == 1:
+                return redirect(url_for('play_memory', difficulty=difficulty))
+            elif game_choice == 2:
+                return redirect(url_for('play_guess', difficulty=difficulty))
+            elif game_choice == 3:
+                return redirect(url_for('play_currency', difficulty=difficulty))
+        except ValueError as e:
+            app.logger.error(f'Error in game selection: {e}')
+            return render_template('game_selection.html', error=str(e), difficulty=difficulty)
+    app.logger.debug('Rendering game selection page')
+    return render_template('game_selection.html', difficulty=difficulty)
+
+@app.route('/play_memory/<int:difficulty>', methods=['GET', 'POST'])
+def play_memory(difficulty: int) -> str:
+    if request.method == 'POST':
+        try:
+            user_sequence = request.form.getlist('sequence')[0].split(' ')
+            user_sequence = [int(num) for num in user_sequence]
+            original_sequence = json.loads(session.get('sequence', '[]'))
+            result = memory_game.is_list_equal(original_sequence, user_sequence)
+            if result:
+                add_score(difficulty)
+            app.logger.debug(f'Memory game result: {result}')
+            return render_template('result.html', result=result, score=get_score(), difficulty=difficulty)
+        except ValueError:
+            app.logger.error('Invalid input in memory game')
+            return render_template('play_memory.html', error="Invalid input", sequence=[])
+    sequence = memory_game.generate_sequence(difficulty)
+    session['sequence'] = json.dumps(sequence)  # Store the sequence in session
+    app.logger.debug(f'Generated sequence for memory game: {sequence}')
+    return render_template('play_memory.html', sequence=sequence, difficulty=difficulty)
+
+@app.route('/play_guess/<int:difficulty>', methods=['GET', 'POST'])
+def play_guess(difficulty: int) -> str:
+    if request.method == 'POST':
+        try:
+            guess = int(request.form['guess'])
+            original_number = session.get('number')
+            result = guess_game.compare_results(original_number, guess)
+            if result:
+                add_score(difficulty)
+            app.logger.debug(f'Guess game result: {result}')
+            return render_template('result.html', result=result, score=get_score(), difficulty=difficulty)
+        except ValueError:
+            app.logger.error('Invalid input in guess game')
+            return render_template('play_guess.html', error="Invalid input", difficulty=difficulty)
+    number = guess_game.generate_number(difficulty)
+    session['number'] = number  # Store the number in session
+    app.logger.debug(f'Generated number for guess game: {number}')
+    return render_template('play_guess.html', difficulty=difficulty)
+
+@app.route('/play_currency/<int:difficulty>', methods=['GET', 'POST'])
+def play_currency(difficulty: int) -> str:
+    if request.method == 'POST':
+        try:
+            guess = float(request.form['guess'])
+            lower, upper = json.loads(session.get('interval', '[0, 0]'))
+            result = lower <= guess <= upper
+            if result:
+                add_score(difficulty)
+            app.logger.debug(f'Currency roulette game result: {result}')
+            return render_template('result.html', result=result, score=get_score(), difficulty=difficulty)
+        except ValueError:
+            app.logger.error('Invalid input in currency roulette game')
+            return render_template('play_currency.html', error="Invalid input", interval=[])
+    interval = currency_roulette_game.get_money_interval(difficulty)
+    session['interval'] = json.dumps(interval)  # Store the interval in session
+    app.logger.debug(f'Generated interval for currency roulette game: {interval}')
+    return render_template('play_currency.html', interval=interval)
+
+@app.route('/score')
+def score_route() -> str:
+    score = get_score()
+    app.logger.debug(f'Current score: {score}')
+    return render_template('score.html', score=score)
+
+
+
+
+app/score.py:
+import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+SCORES_FILE_NAME = "Scores.txt"
+BAD_RETURN_CODE = -1
+
+def get_score() -> int:
+    try:
+        with open(SCORES_FILE_NAME, "r") as f:
+            score = int(f.read())
+            logger.debug(f'Current score: {score}')
+            return score
+    except Exception as e:
+        logger.error(f'Error reading score: {e}')
+        return BAD_RETURN_CODE
+
+def add_score(difficulty: int) -> None:
+    points_of_winning = (difficulty * 3) + 5
+    try:
+        current_score = get_score()
+        if current_score == BAD_RETURN_CODE:
+            current_score = 0
+        new_score = current_score + points_of_winning
+        with open(SCORES_FILE_NAME, "w") as f:
+            f.write(str(new_score))
+        logger.debug(f'Added score {points_of_winning} for difficulty {difficulty}, new score: {new_score}')
+    except Exception as e:
+        logger.error(f'Error adding score: {e}')
+
+
+
+
+app/static/styles.css:
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 1rem 0;
+}
+
+main {
+    padding: 2rem;
+}
+
+footer {
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 1rem 0;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
+form {
+    margin-top: 1rem;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+
+
+
+app/templates/base.html:
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World of Games</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>World of Games</h1>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <p>&copy; 2024 World of Games</p>
+    </footer>
+</body>
+</html>
+
+
+
+
+app/templates/game_selection.html:
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Select a Game and Difficulty Level</h2>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+    <form method="post">
+        <label for="game_choice">Choose a Game:</label>
+        <select name="game_choice" id="game_choice">
+            <option value="1">Memory Game</option>
+            <option value="2">Guess Game</option>
+            <option value="3">Currency Roulette</option>
+        </select>
+        <br>
+        <label for="difficulty">Choose Difficulty Level:</label>
+        <input type="number" name="difficulty" id="difficulty" min="1" value="{{ difficulty }}" required>
+        <br>
+        <button type="submit">Play</button>
+    </form>
+    <a href="{{ url_for('score_route') }}">View Score</a>
+{% endblock %}
+
+
+
+
+app/templates/index.html:
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Welcome to the World of Games</h2>
+    <form action="{{ url_for('welcome_route') }}" method="post">
+        <label for="name">Enter your name:</label>
+        <input type="text" id="name" name="name" required>
+        <button type="submit">Start</button>
+    </form>
+{% endblock %}
+
+
+
+
+app/templates/play_currency.html:
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Currency Roulette Game</h2>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+    <form method="post">
+        <label for="guess">Guess the value of USD in ILS:</label>
+        <input type="number" name="guess" id="guess" step="0.01" required>
+        <button type="submit">Submit</button>
+    </form>
+    <a href="{{ url_for('game_selection') }}">Back to Game Selection</a>
+{% endblock %}
+
+
+
+
+app/templates/play_guess.html:
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Guess Game</h2>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+    <form method="post">
+        <label for="guess">Guess a number between 1 and {{ difficulty }}:</label>
+        <input type="number" name="guess" id="guess" min="1" max="{{ difficulty }}" required>
+        <button type="submit">Submit</button>
+    </form>
+    <a href="{{ url_for('game_selection') }}">Back to Game Selection</a>
+{% endblock %}
+
+
+
+
+app/templates/play_memory.html:
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Memory Game</h2>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% else %}
+        <p>Remember this sequence of numbers:</p>
+        <p>{{ sequence }}</p>
+        <script>
+            setTimeout(() => {
+                document.querySelector('p:nth-of-type(2)').style.visibility = 'hidden';
+            }, 700);
+        </script>
+        <form method="post">
+            <label for="sequence">Enter the sequence:</label>
+            <input type="text" name="sequence" id="sequence" required>
+            <button type="submit">Submit</button>
+        </form>
+    {% endif %}
+    <a href="{{ url_for('game_selection') }}">Back to Game Selection</a>
+{% endblock %}
+
+
+
+
+app/templates/result.html:
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Game Result</h2>
+    {% if result %}
+        <p>Congratulations! You won the game!</p>
+    {% else %}
+        <p>Sorry, you lost the game.</p>
+    {% endif %}
+    <p>Your current score is: {{ score }}</p>
+    <a href="{{ url_for('game_selection', difficulty=difficulty) }}">Play Again</a>
+    <a href="{{ url_for('game_selection') }}">Back to Game Selection</a>
+{% endblock %}
+
+
+
+
+app/templates/score.html:
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Your Score</h2>
+    <p>The score is <div id="score">{{ score }}</div></p>
+    <a href="{{ url_for('game_selection') }}">Back to Game Selection</a>
+{% endblock %}
+
+
+
+
+app/templates/welcome.html:
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>{{ message }}</h2>
+    <form action="{{ url_for('game_selection') }}" method="get">
+        <button type="submit">Choose a Game</button>
+    </form>
+{% endblock %}
+
+
+
+
+app/utils.py:
+def welcome(name):
+    return f"Hello {name} and welcome to the World of Games (WoG). Here you can find many cool games to play."
+
+def load_game():
+    return '''<form method="post">
+              Please choose a game to play: <br>
+              1. Memory Game <br>
+              2. Guess Game <br>
+              3. Currency Roulette <br>
+              <input type="text" name="game_choice"><br>
+              Please choose game difficulty from 1 to 5: <br>
+              <input type="text" name="difficulty"><br>
+              <input type="submit" value="Submit">
+              </form>'''
+
+
+
+
+docker-compose.yml:
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/usr/src/app
+    environment:
+      - FLASK_ENV=${FLASK_ENV}
+      - FLASK_APP=${FLASK_APP}
+      - FLASK_RUN_HOST=${FLASK_RUN_HOST}
+      - SECRET_KEY=${SECRET_KEY}
+
+
+
+
+Dockerfile:
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
+
+# Set the working directory in the container
+WORKDIR /usr/src/app
+
+# Copy the current directory contents into the container at /usr/src/app
+COPY . .
+
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Make port 5000 available to the world outside this container
+EXPOSE 5000
+
+# Define environment variable
+ENV FLASK_APP=main.py
+ENV FLASK_RUN_HOST=0.0.0.0
+
+# Run the Flask app
+CMD ["flask", "run"]
+
+
+
+
+list_files.sh:
+#!/bin/bash
+
+# Base directory to start from
+BASE_DIR=$1
+
+# Function to process files
+process_files() {
+    local DIR=$1
+    for FILE in "$DIR"/*; do
+        if [[ -d "$FILE" ]]; then
+            # If it's a directory and not 'venv', recursively process files
+            if [[ "$(basename "$FILE")" != "venv" && "$(basename "$FILE")" != "__pycache__" ]]; then
+                process_files "$FILE"
+            fi
+        elif [[ -f "$FILE" ]]; then
+            # Print relative path and file content
+            RELATIVE_PATH="${FILE#$BASE_DIR/}"
+            echo "$RELATIVE_PATH:"
+            cat "$FILE"
+            echo -e "\n\n\n"
+        fi
+    done
+}
+
+# Start processing from the base directory
+process_files "$BASE_DIR"
+
+
+
+
+main.py:
+from app import create_app
+
+app = create_app()
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
+
+
+project.txt:
+
+
+
+
+README.md:
+
+
+
+
+requirements.txt:
+Flask==2.0.1
+Werkzeug==2.0.1
+requests==2.25.1
+
+
+
+
+Scores.txt:
+640
+
+
+

@@ -1,0 +1,41 @@
+# services:
+#   web:
+#     build: .
+#     ports:
+#       - "5000:5000"
+#     volumes:
+#       - .:/usr/src/app
+#     environment:
+#       - FLASK_ENV=${FLASK_ENV}
+#       - FLASK_APP=${FLASK_APP}
+#       - FLASK_RUN_HOST=${FLASK_RUN_HOST}
+#       - SECRET_KEY=${SECRET_KEY}
+
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - .:/usr/src/app
+
+
+  chrome:
+    image: selenium/standalone-chrome
+    ports:
+      - "4444:4444"
+
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+
+volumes:
+  jenkins_home:

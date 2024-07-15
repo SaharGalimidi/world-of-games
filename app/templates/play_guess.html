@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Guess Game</h2>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+    <form method="post">
+        <label for="guess">Guess a number between 1 and {{ difficulty }}:</label>
+        <input type="number" name="guess" id="guess" min="1" max="{{ difficulty }}" required>
+        <button type="submit">Submit</button>
+    </form>
+    <a href="{{ url_for('game_selection') }}">Back to Game Selection</a>
+{% endblock %}
