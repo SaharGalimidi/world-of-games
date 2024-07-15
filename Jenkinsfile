@@ -1,11 +1,10 @@
-// Jenkinsfile
 pipeline {
     agent any
 
     stages {
         stage('Checkout') {
             steps {
-                git 'https://your-repository-url.git'
+                git 'https://github.com/SaharGalimidi/world-of-games'
             }
         }
         stage('Build') {
