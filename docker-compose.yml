@@ -1,32 +1,12 @@
-# services:
-#   web:
-#     build: .
-#     ports:
-#       - "5000:5000"
-#     volumes:
-#       - .:/usr/src/app
-#     environment:
-#       - FLASK_ENV=${FLASK_ENV}
-#       - FLASK_APP=${FLASK_APP}
-#       - FLASK_RUN_HOST=${FLASK_RUN_HOST}
-#       - SECRET_KEY=${SECRET_KEY}
-
-
 services:
   web:
     build: .
     ports:
-      - "5000:5000"
+      - "8777:5000"
+    volumes:
+      - ./Scores.txt:/Scores.txt  # Mounting the Scores.txt file
     env_file:
       - .env
-    volumes:
-      - .:/usr/src/app
-
-
-  chrome:
-    image: selenium/standalone-chrome
-    ports:
-      - "4444:4444"
 
 
   jenkins:
@@ -36,14 +16,6 @@ services:
       - "50000:50000"
     volumes:
       - jenkins_home:/var/jenkins_home
-
-  ngrok:
-    image: wernight/ngrok
-    env_file:
-      - .env
-    command: >
-      http -region=$NGROK_REGION -auth=$NGROK_AUTH -subdomain=$NGROK_SUBDOMAIN jenkins:8080
-
 
 volumes:
   jenkins_home:

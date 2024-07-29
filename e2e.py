@@ -1,50 +1,32 @@
-# e2e.py
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-import sys
-import time
 import requests
+import sys
+import re
 
-def wait_for_service(url, timeout=60):
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        try:
-            response = requests.get(url)
-            if response.status_code == 200:
-                return True
-        except requests.exceptions.ConnectionError:
-            time.sleep(1)
-    return False
-
-def test_scores_service(url: str) -> bool:
-    options = Options()
-    options.headless = True
-    service = Service(executable_path='/usr/local/bin/chromedriver')  # Adjust the path as necessary
-    driver = webdriver.Chrome(service=service, options=options)
-
+def test_scores_service(app_url: str) -> bool:
     try:
-        driver.get(url)
-        time.sleep(2)  # wait for the page to load
-        score_element = driver.find_element(By.ID, "score")
-        score = int(score_element.text)
-        return 1 <= score <= 1000
-    except Exception as e:
+        response = requests.get(app_url)
+        response.raise_for_status()  # Check if the request was successful
+
+        # Extract score using regex
+        match = re.search(r'<div id="score">(\d+)</div>', response.text)
+        if match:
+            score = int(match.group(1))
+            return 1 <= score <= 1000
+        else:
+            print("Score not found in the response")
+            return False
+    except (requests.RequestException, ValueError) as e:
         print(f"An error occurred: {e}")
         return False
-    finally:
-        driver.quit()
 
 def main_function():
-    url = "http://localhost:5000/score"
-    if wait_for_service(url):
-        if test_scores_service(url):
-            sys.exit(0)
-        else:
-            sys.exit(-1)
+    app_url = "http://localhost:8777/score"  # URL to fetch the score
+    test_result = test_scores_service(app_url)
+    if test_result:
+        print("Test pass")
+        sys.exit(0)
     else:
-        print("Service did not start in time")
+        print("Test fail")
         sys.exit(-1)
 
 if __name__ == "__main__":

@@ -478,36 +478,15 @@ def load_game():
 
 
 docker-compose.yml:
-# services:
-#   web:
-#     build: .
-#     ports:
-#       - "5000:5000"
-#     volumes:
-#       - .:/usr/src/app
-#     environment:
-#       - FLASK_ENV=${FLASK_ENV}
-#       - FLASK_APP=${FLASK_APP}
-#       - FLASK_RUN_HOST=${FLASK_RUN_HOST}
-#       - SECRET_KEY=${SECRET_KEY}
-
-
 services:
   web:
     build: .
     ports:
-      - "5000:5000"
+      - "8777:5000"
     env_file:
       - .env
     volumes:
-      - .:/usr/src/app
-
-
-  chrome:
-    image: selenium/standalone-chrome
-    ports:
-      - "4444:4444"
-
+      - .:/usr/src/app  # Mounts the entire project directory, including Scores.txt
 
   jenkins:
     image: jenkins/jenkins:lts
@@ -522,30 +501,8 @@ volumes:
 
 
 
+
 Dockerfile:
-# # Use an official Python runtime as a parent image
-# FROM python:3.9-slim
-
-# # Set the working directory in the container
-# WORKDIR /usr/src/app
-
-# # Copy the current directory contents into the container at /usr/src/app
-# COPY . .
-
-# # Install any needed packages specified in requirements.txt
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# # Make port 5000 available to the world outside this container
-# EXPOSE 5000
-
-# # Define environment variable
-# ENV FLASK_APP=main.py
-# ENV FLASK_RUN_HOST=0.0.0.0
-
-# # Run the Flask app
-# CMD ["flask", "run"]
-
-
 # Dockerfile
 FROM python:3.9-slim
 
@@ -555,118 +512,11 @@ COPY . .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY Scores.txt /Scores.txt
 
 EXPOSE 5000
 
 CMD ["flask", "run", "--host=0.0.0.0"]
 
-
-
-
-e2e.py:
-# e2e.py
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-import sys
-import time
-import requests
-
-def wait_for_service(url, timeout=60):
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        try:
-            response = requests.get(url)
-            if response.status_code == 200:
-                return True
-        except requests.exceptions.ConnectionError:
-            time.sleep(1)
-    return False
-
-def test_scores_service(url: str) -> bool:
-    options = Options()
-    options.headless = True
-    service = Service(executable_path='/usr/local/bin/chromedriver')  # Adjust the path as necessary
-    driver = webdriver.Chrome(service=service, options=options)
-
-    try:
-        driver.get(url)
-        time.sleep(2)  # wait for the page to load
-        score_element = driver.find_element(By.ID, "score")
-        score = int(score_element.text)
-        return 1 <= score <= 1000
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return False
-    finally:
-        driver.quit()
-
-def main_function():
-    url = "http://localhost:5000/score"
-    if wait_for_service(url):
-        if test_scores_service(url):
-            sys.exit(0)
-        else:
-            sys.exit(-1)
-    else:
-        print("Service did not start in time")
-        sys.exit(-1)
-
-if __name__ == "__main__":
-    main_function()
-
-
-
-
-Jenkinsfile:
-// Jenkinsfile
-pipeline {
-    agent any
-
-    stages {
-        stage('Checkout') {
-            steps {
-                git 'https://your-repository-url.git'
-            }
-        }
-        stage('Build') {
-            steps {
-                script {
-                    dockerImage = docker.build("world-of-games:latest")
-                }
-            }
-        }
-        stage('Run') {
-            steps {
-                script {
-                    dockerImage.inside("--network host") {
-                        sh 'docker-compose up -d'
-                    }
-                }
-            }
-        }
-        stage('Test') {
-            steps {
-                script {
-                    try {
-                        sh 'python e2e.py'
-                    } catch (Exception e) {
-                        error("Tests failed")
-                    }
-                }
-            }
-        }
-        stage('Finalize') {
-            steps {
-                script {
-                    sh 'docker-compose down'
-                }
-            }
-        }
-    }
-}
 
 
 
@@ -732,7 +582,7 @@ requests==2.25.1
 
 
 Scores.txt:
-
+1
 
 
 

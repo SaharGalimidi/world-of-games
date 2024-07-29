@@ -1,45 +1,51 @@
 pipeline {
     agent any
 
+    environment {
+        REPO_URL = 'https://github.com/SaharGalimidi/world-of-games'
+        IMAGE_NAME = 'world-of-games'
+        BRANCH_NAME = 'main'
+    }
+
+    triggers {
+        pollSCM('H/5 * * * *')  // Poll the repository every 5 minutes
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/SaharGalimidi/world-of-games'
+                git url: "${REPO_URL}", branch: "${BRANCH_NAME}"
             }
         }
-        stage('Build') {
+
+        stage('Build Docker Image') {
             steps {
                 script {
-                    dockerImage = docker.build("world-of-games:latest")
+                    docker.build("${IMAGE_NAME}:latest")
                 }
             }
         }
-        stage('Run') {
-            steps {
-                script {
-                    dockerImage.inside("--network host") {
-                        sh 'docker-compose up -d'
-                    }
-                }
-            }
-        }
+
         stage('Test') {
             steps {
                 script {
-                    try {
+                    docker.image("${IMAGE_NAME}:latest").inside {
                         sh 'python e2e.py'
-                    } catch (Exception e) {
-                        error("Tests failed")
                     }
                 }
             }
         }
-        stage('Finalize') {
-            steps {
-                script {
-                    sh 'docker-compose down'
-                }
-            }
+    }
+
+    post {
+        always {
+            echo 'Build completed.'
+        }
+        success {
+            echo 'The build and tests were successful.'
+        }
+        failure {
+            echo 'The build or tests failed.'
         }
     }
 }
