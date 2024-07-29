@@ -51,7 +51,7 @@ pipeline {
     agent any
 
     environment {
-        REPO_URL = 'https://github.com/SaharGalimidi/world-of-games.git'
+        REPO_URL = 'https://github.com/SaharGalimidi/world-of-games/'
         BRANCH_NAME = 'main'
     }
 
