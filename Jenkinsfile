@@ -75,7 +75,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh 'python3 e2e.py'  # Run tests as the root user
+                sh 'python3 e2e.py'  // Run tests as the root user
             }
         }
     }
