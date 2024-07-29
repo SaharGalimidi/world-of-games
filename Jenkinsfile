@@ -58,8 +58,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: "${REPO_URL}", branch: "${BRANCH_NAME}"
-            }
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/SaharGalimidi/world-of-games.git']])            }
         }
 
         stage('Install Dependencies') {
