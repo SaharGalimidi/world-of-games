@@ -7,10 +7,6 @@ pipeline {
         BRANCH_NAME = 'main'
     }
 
-    triggers {
-        pollSCM('H/5 * * * *')  // Poll the repository every 5 minutes
-    }
-
     stages {
         stage('Checkout') {
             steps {
