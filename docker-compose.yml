@@ -1,21 +1,48 @@
 services:
-  web:
-    build: .
-    ports:
-      - "8777:5000"
-    volumes:
-      - ./Scores.txt:/Scores.txt  # Mounting the Scores.txt file
-    env_file:
-      - .env
+  # web:
+  #   build: .
+  #   ports:
+  #     - "8777:5000"
+  #   volumes:
+  #     - ./Scores.txt:/Scores.txt  # Mounting the Scores.txt file
+  #   env_file:
+  #     - .env
 
+
+  # jenkins:
+  #   image: jenkins/jenkins:lts
+  #   user: root
+  #   ports:
+  #     - "8080:8080"
+  #     - "50000:50000"
+  #     - "8777:5000"  # Expose port 5000 for the web application
+  #   volumes:
+  #     - jenkins_home:/var/jenkins_home
+  #     - .:/usr/src/app
+  #   command: >
+  #     /bin/bash -c "
+  #     apt-get update &&
+  #     apt-get install -y python3 python3-pip &&
+  #     pip3 install -r /usr/src/app/requirements.txt &&
+  #     cp /usr/src/app/Scores.txt /Scores.txt &&
+  #     chown -R jenkins:jenkins /usr/src/app &&
+  #     su jenkins
+
+  #   env_file:
+  #     - .env
 
   jenkins:
     image: jenkins/jenkins:lts
+    user: root  # Start as root to install packages in pipeline
     ports:
       - "8080:8080"
       - "50000:50000"
+      - "8777:5000"  # Expose port 5000 for the web application
     volumes:
       - jenkins_home:/var/jenkins_home
+      - .:/usr/src/app
+    env_file:
+      - .env
 
 volumes:
   jenkins_home:
