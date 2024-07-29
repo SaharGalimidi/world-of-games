@@ -58,7 +58,8 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: "${REPO_URL}", branch: "${BRANCH_NAME}"
+                // Checkout code from the repository
+                checkout([$class: 'GitSCM', branches: [[name: "${BRANCH_NAME}"]], userRemoteConfigs: [[url: "${REPO_URL}"]]])
             }
         }
 
@@ -67,16 +68,15 @@ pipeline {
                 sh '''
                     apt-get update &&
                     apt-get install -y python3 python3-pip &&
-                    pip3 install -r /usr/src/app/requirements.txt &&
-                    cp /usr/src/app/Scores.txt /Scores.txt &&
-                    chown -R jenkins:jenkins /usr/src/app
+                    pip3 install -r requirements.txt &&
+                    cp Scores.txt /Scores.txt
                 '''
             }
         }
 
         stage('Test') {
             steps {
-                sh 'python3 /usr/src/app/e2e.py'  # Run tests as the root user
+                sh 'python3 e2e.py'  # Run tests as the root user
             }
         }
     }
