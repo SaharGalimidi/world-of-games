@@ -58,8 +58,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Checkout code from the repository
-                checkout([$class: 'GitSCM', branches: [[name: "${BRANCH_NAME}"]], userRemoteConfigs: [[url: "${REPO_URL}"]]])
+                git url: "${REPO_URL}", branch: "${BRANCH_NAME}"
             }
         }
 
