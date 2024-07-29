@@ -14,10 +14,17 @@ services:
     ports:
       - "8080:8080"
       - "50000:50000"
-      - "8777:5000"  # Expose port 5000 for the web application
+      - "8777:8777"
+    working_dir: /usr/src/app
     volumes:
       - jenkins_home:/var/jenkins_home
       - .:/usr/src/app
+    command: >
+      /bin/bash -c "
+       apt-get update &&
+       apt-get install -y python3 python3-pip &&
+       java -jar /usr/share/jenkins/jenkins.war
+       "
     env_file:
       - .env
 

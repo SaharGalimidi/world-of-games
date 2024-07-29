@@ -21,6 +21,7 @@ def test_scores_service(app_url: str) -> bool:
 
 def main_function():
     app_url = "http://localhost:8777/score"  # URL to fetch the score
+    print(f"URL to test: {app_url}")
     test_result = test_scores_service(app_url)
     if test_result:
         print("Test pass")
