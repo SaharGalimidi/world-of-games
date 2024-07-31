@@ -1,52 +1,3 @@
-// pipeline {
-//     agent any
-
-//     environment {
-//         REPO_URL = 'https://github.com/SaharGalimidi/world-of-games'
-//         IMAGE_NAME = 'world-of-games'
-//         BRANCH_NAME = 'main'
-//     }
-
-//     stages {
-//         stage('Checkout') {
-//             steps {
-//                 git url: "${REPO_URL}", branch: "${BRANCH_NAME}"
-//             }
-//         }
-
-//         stage('Build Docker Image') {
-//             steps {
-//                 script {
-//                     docker.build("${IMAGE_NAME}:latest")
-//                 }
-//             }
-//         }
-
-//         stage('Test') {
-//             steps {
-//                 script {
-//                     docker.image("${IMAGE_NAME}:latest").inside {
-//                         sh 'python e2e.py'
-//                     }
-//                 }
-//             }
-//         }
-//     }
-
-//     post {
-//         always {
-//             echo 'Build completed.'
-//         }
-//         success {
-//             echo 'The build and tests were successful.'
-//         }
-//         failure {
-//             echo 'The build or tests failed.'
-//         }
-//     }
-// }
-
-
 pipeline {
     agent any
 
@@ -58,16 +9,25 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/SaharGalimidi/world-of-games.git']])            }
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/SaharGalimidi/world-of-games.git']])
+            }
         }
 
         stage('Install Dependencies') {
             steps {
                 sh '''
-                    apt-get update &&
-                    apt-get install -y python3 python3-pip &&
-                    pip3 install -r requirements.txt &&
-                    cp Scores.txt /Scores.txt
+                    pip3 install --break-system-packages -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Start Service') {
+            steps {
+                sh '''
+                    echo "Starting Flask service..."
+                    nohup python3 main.py &
+                    sleep 10
+                    echo "Flask service started"
                 '''
             }
         }
