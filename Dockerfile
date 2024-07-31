@@ -13,11 +13,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the Scores.txt file into the container
 COPY Scores.txt /Scores.txt
 
-# Make port 5000 available to the world outside this container
+EXPOSE 8777
 EXPOSE 5000
 
 # Define environment variable
 ENV FLASK_APP=main.py
 
 # Run the application
-CMD ["flask", "run", "--host=0.0.0.0"]
+CMD ["flask", "run", "--host=0.0.0.0", "--port=8777"]

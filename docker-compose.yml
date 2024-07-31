@@ -33,20 +33,31 @@
 
 
 
+version: '3.8'
+
+networks:
+  wog-network:
+    driver: bridge
+
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8777:5000"
+      - "8777:8777"
     volumes:
       - ./Scores.txt:/Scores.txt  # Mounting the Scores.txt file
     env_file:
       - .env
+    networks:
+      - wog-network
+    environment:
+      - PORT=8777
 
   jenkins:
     image: jenkins/jenkins:lts
+    user: root  # Start as root to install packages in pipeline
     ports:
       - "8080:8080"
       - "50000:50000"
@@ -63,6 +74,8 @@ services:
        "
     env_file:
       - .env
+    networks:
+      - wog-network
 
 volumes:
   jenkins_home:
