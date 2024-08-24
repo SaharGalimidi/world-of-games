@@ -95,6 +95,7 @@ jobs:
     - name: Run Docker Compose
       run: |
         docker-compose -f docker-compose.yml up -d
+        docker-compose logs postgres
       env:
         POSTGRES_DB: wog-db
         POSTGRES_USER: ${{ secrets.DB_USER }}
