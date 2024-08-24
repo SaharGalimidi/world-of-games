@@ -55,17 +55,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # services:
-    #   postgres:
-    #     image: postgres:latest
-    #     ports:
-    #       - 5432:5432
-    #     env:
-    #       POSTGRES_DB: wog-db
-    #       POSTGRES_USER: ${{ secrets.DB_USER }}
-    #       POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-    #       DATABASE_URL : ${{secrets.DATABASE_URL}}
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
