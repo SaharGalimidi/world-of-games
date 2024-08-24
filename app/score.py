@@ -1,30 +1,48 @@
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 import logging
+from libs.postgres.db import get_db
+from libs.postgres.models import Score
 
 logger = logging.getLogger(__name__)
 
-SCORES_FILE_NAME = "Scores.txt"
 BAD_RETURN_CODE = -1
 
-def get_score() -> int:
+def get_score(player_name: str) -> int:
     try:
-        with open(SCORES_FILE_NAME, "r") as f:
-            score = int(f.read())
-            logger.debug(f'Current score: {score}')
-            return score
+        db = next(get_db())
+        score_record = db.query(Score).filter(Score.player_name == player_name).all()
+        if score_record:
+            total_score = 0
+            for record in score_record:
+                total_score += record.score
+            logger.debug(f"Current score for {player_name}: {total_score}")
+            return total_score
+        else:
+            logger.debug(f"No score record found for {player_name}. Returning 0.")
+            return 0
     except Exception as e:
-        logger.error(f'Error reading score: {e}')
+        logger.error(f"Error retrieving score for {player_name}: {e}")
         return BAD_RETURN_CODE
-
-def add_score(difficulty: int) -> None:
+    
+def add_score(player_name: str, game_name: str, difficulty: int) -> None:
     points_of_winning = (difficulty * 3) + 5
     try:
-        current_score = get_score()
-        if current_score == BAD_RETURN_CODE:
-            current_score = 0
-        new_score = current_score + points_of_winning
-        with open(SCORES_FILE_NAME, "w") as f:
-            f.write(str(new_score))
-        logger.debug(f'Added score {points_of_winning} for difficulty {difficulty}, new score: {new_score}')
+        db = next(get_db())
+        new_score = Score(player_name=player_name, game_name=game_name, score=points_of_winning)
+        db.add(new_score)
+        db.commit()
+        logger.debug(f"Created new score record for {player_name}: {new_score.score}")
+        return None
     except Exception as e:
-        logger.error(f'Error adding score: {e}')
+        db.rollback()
+        logger.error(f"Error adding score for {player_name}: {e}")
+        return None
+
+
+    
+
+
+

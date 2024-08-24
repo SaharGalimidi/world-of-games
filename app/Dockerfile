@@ -10,14 +10,10 @@ COPY . .
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the Scores.txt file into the container
-COPY Scores.txt /Scores.txt
-
 EXPOSE 8777
 EXPOSE 5000
 
 # Define environment variable
 ENV FLASK_APP=main.py
 
-# Run the application
-CMD ["flask", "run", "--host=0.0.0.0", "--port=8777"]
+CMD ["flask", "run", "--host=0.0.0.0", "--port=8777", "--debugger", "--reload"]

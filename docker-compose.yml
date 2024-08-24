@@ -32,9 +32,6 @@
 #   jenkins_home:
 
 
-
-version: '3.8'
-
 networks:
   wog-network:
     driver: bridge
@@ -43,12 +40,13 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: app/Dockerfile
     container_name: flask-app
     ports:
       - "8777:8777"
-    volumes:
-      - ./Scores.txt:/Scores.txt  # Mounting the Scores.txt file
+    depends_on:
+      postgres:
+        condition: service_healthy
     env_file:
       - .env
     networks:
@@ -56,27 +54,51 @@ services:
     environment:
       - PORT=8777
 
-  jenkins:
-    image: jenkins/jenkins:lts
-    user: root  # Start as root to install packages in pipeline
+  # jenkins:
+  #   image: jenkins/jenkins:lts
+  #   user: root  # Start as root to install packages in pipeline
+  #   ports:
+  #     - "8080:8080"
+  #     - "50000:50000"
+  #   working_dir: /usr/src/app
+  #   volumes:
+  #     - jenkins_home:/var/jenkins_home
+  #     - .:/usr/src/app
+  #     - /var/run/docker.sock:/var/run/docker.sock  # Enable Jenkins to communicate with Docker
+  #   command: >
+  #     /bin/bash -c "
+  #      apt-get update &&
+  #      curl -fsSL https://get.docker.com | sh &&
+  #      java -jar /usr/share/jenkins/jenkins.war
+  #      "
+  #   env_file:
+  #     - .env
+  #   networks:
+  #     - wog-network
+
+  postgres:
+    build:
+      context: .
+      dockerfile: libs/postgres/Dockerfile
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "8080:8080"
-      - "50000:50000"
-    working_dir: /usr/src/app
+      - "5432:5432"
     volumes:
-      - jenkins_home:/var/jenkins_home
-      - .:/usr/src/app
-      - /var/run/docker.sock:/var/run/docker.sock  # Enable Jenkins to communicate with Docker
-    command: >
-      /bin/bash -c "
-       apt-get update &&
-       curl -fsSL https://get.docker.com | sh &&
-       java -jar /usr/share/jenkins/jenkins.war
-       "
-    env_file:
-      - .env
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d wog-db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     networks:
       - wog-network
+    env_file:
+      - .env
+
 
 volumes:
-  jenkins_home:
+  #jenkins_home:
+  postgres_data:

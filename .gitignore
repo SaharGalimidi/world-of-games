@@ -3,3 +3,6 @@ __pycache__/
 .env
 venv/
 project.txt
+list_files.sh
+pytest_cache/
+.pytest_cache/

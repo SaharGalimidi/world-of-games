@@ -1,4 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for, session, current_app as app, flash
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from flask import render_template, request, redirect, url_for, session, current_app as app, flash
 from app.games import guess_game, memory_game, currency_roulette_game
 from app.score import add_score, get_score
 import json
@@ -55,13 +59,14 @@ def play_memory(difficulty: int) -> str:
             user_sequence = request.form.getlist('sequence')[0].split(' ')
             user_sequence = [int(num) for num in user_sequence]
             original_sequence = json.loads(session.get('sequence', '[]'))
+            name = session.get('username')
             result = memory_game.is_list_equal(original_sequence, user_sequence)
             if result:
-                add_score(difficulty)
-            app.logger.debug(f'Memory game result: {result}')
-            return render_template('result.html', result=result, score=get_score(), difficulty=difficulty)
-        except ValueError:
-            app.logger.error('Invalid input in memory game')
+                add_score(name, "Memory Game", difficulty)
+            total_score = get_score(name)
+            return render_template('result.html', result=result, score=total_score, difficulty=difficulty)
+        except Exception as e:
+            app.logger.error(f'Invalid input in memory game {e}')
             flash('Invalid input')
             return render_template('play_memory.html', error="Invalid input", sequence=[])
     sequence = memory_game.generate_sequence(difficulty)
@@ -76,10 +81,12 @@ def play_guess(difficulty: int) -> str:
             guess = int(request.form['guess'])
             original_number = session.get('number')
             result = guess_game.compare_results(original_number, guess)
+            name = session.get('username')
             if result:
-                add_score(difficulty)
+                add_score(name, "Guess Game", difficulty)
             app.logger.debug(f'Guess game result: {result}')
-            return render_template('result.html', result=result, score=get_score(), difficulty=difficulty)
+            total_score = get_score(name)
+            return render_template('result.html', result=result, score=total_score, difficulty=difficulty)
         except ValueError:
             app.logger.error('Invalid input in guess game')
             flash('Invalid input')
@@ -95,11 +102,13 @@ def play_currency(difficulty: int) -> str:
         try:
             guess = float(request.form['guess'])
             lower, upper = json.loads(session.get('interval', '[0, 0]'))
+            name = session.get('username')
             result = lower <= guess <= upper
             if result:
-                add_score(difficulty)
+                add_score(name, "Currency Roulette", difficulty)
             app.logger.debug(f'Currency roulette game result: {result}')
-            return render_template('result.html', result=result, score=get_score(), difficulty=difficulty)
+            total_score = get_score(name)
+            return render_template('result.html', result=result, score=total_score, difficulty=difficulty)
         except ValueError:
             app.logger.error('Invalid input in currency roulette game')
             flash('Invalid input')
@@ -111,6 +120,6 @@ def play_currency(difficulty: int) -> str:
 
 @app.route('/score')
 def score_route() -> str:
-    score = get_score()
+    score = get_score(session.get('username'))
     app.logger.debug(f'Current score: {score}')
     return render_template('score.html', score=score)

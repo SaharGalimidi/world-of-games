@@ -13,28 +13,45 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Verify Docker Installation') {
             steps {
-                sh '''
-                    pip3 install --break-system-packages -r requirements.txt
-                '''
+                script {
+                    sh 'docker --version'
+                }
             }
         }
 
-        stage('Start Service') {
+        stage('Build Docker Image') {
             steps {
-                sh '''
-                    echo "Starting Flask service..."
-                    nohup python3 main.py &
-                    sleep 10
-                    echo "Flask service started"
-                '''
+                script {
+                    sh 'docker build -t world-of-games .'
+                }
             }
         }
+
 
         stage('Test') {
             steps {
-                sh 'python3 e2e.py'  // Run tests as the root user
+                script {
+                    // Wait for the Flask app to be fully up and running
+                    sleep 10
+                    
+                    // Run e2e.py inside the Flask app container and capture the exit status
+                    def testResult = sh script: 'docker exec flask-app python3 e2e.py', returnStatus: true
+                    if (testResult != 0) {
+                        error('End-to-end tests failed.')
+                    }
+                }
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                script {
+                    // Stop and remove the Flask app container
+                    sh 'docker stop flask-app'
+                    sh 'docker rm flask-app'
+                }
             }
         }
     }
