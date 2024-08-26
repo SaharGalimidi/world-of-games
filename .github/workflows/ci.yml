@@ -1,124 +1,7 @@
-# # name: CI/CD Pipeline
-
-# # on:
-# #   push:
-# #     branches:
-# #       - main
-
-# # jobs:
-# #   build:
-# #     runs-on: ubuntu-latest
-# #     steps:
-# #       - name: Checkout code
-# #         uses: actions/checkout@v2
-
-# #       - name: Set up Python
-# #         uses: actions/setup-python@v2
-# #         with:
-# #           python-version: '3.9'
-
-# #       - name: Install dependencies
-# #         run: |
-# #           python -m pip install --upgrade pip
-# #           pip install -r app/requirements.txt
-
-# #       - name: Set up Docker Buildx
-# #         uses: docker/setup-buildx-action@v1
-
-# #       - name: Install Docker Compose
-# #         run: |
-# #           sudo apt-get update
-# #           sudo apt-get install -y docker-compose
-
-
-
-# #       - name: Build Docker image
-# #         run: docker-compose up --build -d
-# #         env:
-# #           DB_USER: ${{ secrets.DB_USER }}
-# #           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-# #           SECRET_KEY: ${{ secrets.SECRET_KEY }}
-# #           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-# #       - name: Run tests
-# #         run: docker exec flask-app pytest
-
-
-# name: CI
-
-# on:
-#   push:
-#     branches:
-#       - main
-
-# jobs:
-#   build:
-#     runs-on: ubuntu-latest
-
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v4
-
-#     - name: Create .env file
-#       run: |
-#         echo "POSTGRES_USER=${{ secrets.DB_USER }}" >> .env
-#         echo "POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-#         echo "POSTGRES_DB=wog-db" >> .env
-#         echo "DATABASE_URL=${{secrets.DATABASE_URL}}" >> .env
-
-#     - name: Set up Docker Buildx
-#       uses: docker/setup-buildx-action@v2
-
-#     - name: Cache Docker layers
-#       uses: actions/cache@v3
-#       with:
-#         path: /tmp/.buildx-cache
-#         key: ${{ runner.os }}-buildx-${{ github.sha }}
-#         restore-keys: |
-#           ${{ runner.os }}-buildx-
-
-#     - name: Install Docker Compose
-#       run: |
-#         sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-#         sudo chmod +x /usr/local/bin/docker-compose
-
-#     - name: Build and push Docker images
-#       run: |
-#         docker-compose -f docker-compose.yml build
-#       env:
-#         POSTGRES_DB: wog-db
-#         POSTGRES_USER: ${{ secrets.DB_USER }}
-#         POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-#         DATABASE_URL : ${{secrets.DATABASE_URL}}
-
-
-#     - name: Run Docker Compose
-#       run: |
-#         docker-compose -f docker-compose.yml up -d
-#         docker-compose logs postgres
-#       env:
-#         POSTGRES_DB: wog-db
-#         POSTGRES_USER: ${{ secrets.DB_USER }}
-#         POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-#         DATABASE_URL : ${{secrets.DATABASE_URL}}
-
-#     - name: Run tests
-#       run: |
-#         docker-compose exec web pytest
-#       env:
-#         POSTGRES_DB: wog-db
-#         POSTGRES_USER: ${{ secrets.DB_USER }}
-#         POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-#         DATABASE_URL : ${{secrets.DATABASE_URL}}
-
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
-      - 'feature/**'
-  pull_request:
     branches:
       - main
 
@@ -130,32 +13,35 @@ jobs:
       postgres:
         image: postgres:latest
         env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USERNAME }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"
+          --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
 
-      - name: Build and run services
-        run: docker-compose up -d --build
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
-      - name: Wait for Postgres to be healthy
-        run: docker-compose exec postgres pg_isready -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }}
-
-      - name: Run tests
-        run: docker-compose exec web pytest # Adjust this command to match your test command
-
-      - name: Shut down services
-        run: docker-compose down
+    - name: Run tests
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      run: |
+        python main.py
+        sleep 10
+        pytest
