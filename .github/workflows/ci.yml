@@ -39,7 +39,10 @@ jobs:
       run: |
         python main.py &
         sleep 10
-    
+      env:
+        TEST_ENV: True
+
+
     - name: Tests
       run: |
         python -m pytest
