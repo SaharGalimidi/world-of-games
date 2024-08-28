@@ -59,7 +59,7 @@ jobs:
 
     - name: Run app
       run: |
-        python tests/main_test.py
+        python ./tests/main_tests.py
     
     - name: Tests
       run: |
