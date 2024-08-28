@@ -38,6 +38,7 @@ jobs:
     - name: Run app
       run: |
         python main.py &
+        sleep 10
     
     - name: Tests
       run: |
