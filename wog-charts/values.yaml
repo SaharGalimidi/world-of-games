@@ -1,0 +1,31 @@
+namespace: wog
+web:
+  image: sahar567/wog-web:latest
+  replicas: 1
+  containerPort: 8777
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+
+postgres:
+  image: sahar567/wog-db:latest
+  replicas: 1
+  containerPort: 5432
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+  storage: 1Gi
+  credentials:
+    database_url: cG9zdGdyZXNxbDovL2FkbWluOmFkbWluQHBvc3RncmVzOjU0MzIvd29nLWRi
+    postgres_db: d29nLWRi
+    user: YWRtaW4=
+    password: YWRtaW4=
+    secret_key: c3VwZXJzZWNyZXRrZXk=
